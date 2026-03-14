@@ -1154,8 +1154,8 @@ window.addEventListener('hashchange', function() {
 
 // Generate QR codes linking to this page with borough hash
 function generateQRCodes() {
-  // Use GitHub Pages URL for QR codes so they work when printed
-  const baseUrl = 'https://elenabaurkot.github.io/new-york-city-public-libraries/';
+  // Use custom domain for QR codes so they work when printed
+  const baseUrl = 'https://newyorkcitylibraries.com/';
   const boroughs = ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'];
   
   boroughs.forEach(borough => {
