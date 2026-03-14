@@ -1136,11 +1136,26 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Generate QR codes for each borough
   generateQRCodes();
+  
+  // Handle URL hash to show correct borough on page load
+  const hash = window.location.hash.replace('#', '');
+  if (hash && ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'].includes(hash)) {
+    showBorough(hash);
+  }
+});
+
+// Listen for hash changes (e.g., back/forward navigation)
+window.addEventListener('hashchange', function() {
+  const hash = window.location.hash.replace('#', '');
+  if (hash && ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'].includes(hash)) {
+    showBorough(hash);
+  }
 });
 
 // Generate QR codes linking to this page with borough hash
 function generateQRCodes() {
-  const baseUrl = window.location.href.split('#')[0];
+  // Use GitHub Pages URL for QR codes so they work when printed
+  const baseUrl = 'https://elenabaurkot.github.io/new-york-city-public-libraries/';
   const boroughs = ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'];
   
   boroughs.forEach(borough => {
@@ -1186,6 +1201,11 @@ function showBorough(name) {
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(name).classList.add('active');
   document.querySelector('[data-borough="' + name + '"]').classList.add('active');
+  
+  // Update URL hash (without triggering hashchange event loop)
+  if (window.location.hash !== '#' + name) {
+    history.replaceState(null, '', '#' + name);
+  }
 
   // Initialize map if not already done, and reset view
   setTimeout(() => {
