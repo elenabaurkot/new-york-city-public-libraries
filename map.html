@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manhattan Libraries Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #map {
+      /* Rotate 90 degrees - swap width/height and rotate */
+      width: 100vh;
+      height: 100vw;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+    @media print {
+      @page {
+        size: portrait;
+        margin: 0;
+      }
+      #map {
+        width: 11in;
+        height: 8.5in;
+        transform: translate(-50%, -50%) rotate(270deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    const manhattanLibraries = [
+      [40.7903, -73.9466, "Aguilar"],
+      [40.7511, -73.9822, "Andrew Heiskell"],
+      [40.7983, -73.9522, "Bloomingdale"],
+      [40.8167, -73.9589, "Countee Cullen"],
+      [40.7295, -73.9897, "Epiphany"],
+      [40.7535, -73.9910, "Grand Central"],
+      [40.8041, -73.9637, "George Bruce"],
+      [40.8456, -73.9367, "Fort Washington"],
+      [40.8319, -73.9443, "Hamilton Grange"],
+      [40.8375, -73.9407, "Hamilton Fish Park"],
+      [40.8540, -73.9328, "Inwood"],
+      [40.7209, -73.9875, "Hamilton Fish"],
+      [40.7151, -74.0005, "Chatham Square"],
+      [40.7162, -73.9882, "Seward Park"],
+      [40.7282, -73.9830, "Tompkins Square"],
+      [40.7332, -73.9939, "Jefferson Market"],
+      [40.7358, -73.9909, "Muhlenberg"],
+      [40.7454, -73.9998, "Hudson Park"],
+      [40.7623, -73.9855, "Mid-Manhattan at 42nd Street"],
+      [40.7527, -73.9731, "Stavros Niarchos Foundation Library"],
+      [40.7614, -73.9776, "Terence Cardinal Cooke-Cathedral"],
+      [40.7694, -73.9647, "67th Street"],
+      [40.7756, -73.9539, "Yorkville"],
+      [40.7827, -73.9481, "96th Street"],
+      [40.7684, -73.9868, "Columbus"],
+      [40.7741, -73.9817, "St. Agnes"],
+      [40.7841, -73.9769, "Riverside"],
+      [40.8007, -73.9662, "Morningside Heights"],
+      [40.8084, -73.9448, "125th Street"]
+    ];
+
+    const map = L.map('map', {
+      zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add markers for all Manhattan libraries
+    manhattanLibraries.forEach(lib => {
+      L.marker([lib[0], lib[1]])
+        .addTo(map)
+        .bindPopup(lib[2]);
+    });
+
+    // Fit map to show all libraries
+    const bounds = L.latLngBounds(manhattanLibraries.map(lib => [lib[0], lib[1]]));
+    map.fitBounds(bounds, { padding: [20, 20] });
+  </script>
+</body>
+</html>
