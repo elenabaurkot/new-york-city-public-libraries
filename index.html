@@ -1137,9 +1137,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Generate QR codes for each borough
   generateQRCodes();
   
-  // Handle URL hash to show correct borough on page load
+  // Handle URL hash or query parameter to show correct borough on page load
   const hash = window.location.hash.replace('#', '');
-  if (hash && ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'].includes(hash)) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const boroughParam = urlParams.get('borough');
+  
+  if (boroughParam && ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'].includes(boroughParam)) {
+    showBorough(boroughParam);
+  } else if (hash && ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'].includes(hash)) {
     showBorough(hash);
   }
 });
@@ -1157,12 +1162,13 @@ function generateQRCodes() {
   // Use custom domain for QR codes so they work when printed
   const baseUrl = 'https://newyorkcitylibraries.com/';
   const boroughs = ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'];
-  
+
   boroughs.forEach(borough => {
     const qrSection = document.querySelector(`.qr-code-section[data-borough="${borough}"]`);
     if (qrSection) {
       const qrImg = qrSection.querySelector('.qr-img');
-      const targetUrl = encodeURIComponent(`${baseUrl}#${borough}`);
+      // Use query parameter instead of hash - more reliable for QR codes
+      const targetUrl = encodeURIComponent(`${baseUrl}?borough=${borough}`);
       qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${targetUrl}`;
     }
   });
