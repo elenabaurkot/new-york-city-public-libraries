@@ -256,66 +256,135 @@
   .print-map {
     display: none;
   }
+  
+  .print-static-map {
+    display: none;
+  }
+
+  @page {
+    size: letter portrait;
+    margin: 0;
+  }
+
+  .qr-code-section {
+    display: none;
+  }
 
   @media print {
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      height: 100% !important;
+    }
+    
+    /* Hide dynamic map, show static print map */
+    .borough-map {
+      display: block !important;
+    }
+    
+    .print-static-map {
+      display: none !important;
+    }
+    
     .borough-tabs, .hero, .print-bar, .fun-fact, .print-map { display: none !important; }
     .borough-view { display: none !important; }
-    .borough-view.active { display: block !important; padding: 0.2rem !important; }
+    .borough-view.active { display: block !important; padding: 0 !important; margin: 0 auto !important; }
     
     .borough-header {
-      margin-bottom: 0.2rem !important;
-      padding: 0 !important;
+      display: none !important;
     }
-    
-    .borough-icon { display: none !important; }
-    
-    .borough-name {
-      font-size: 1.4rem !important;
-      text-align: center;
-      margin-bottom: 0.2rem !important;
-    }
-    
-    .borough-tagline { display: none !important; }
     
     .content-grid {
       display: flex !important;
       flex-direction: column !important;
+      gap: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
     
+    /* Portrait layout - full page map with border */
     .map-card {
-      width: 100% !important;
+      width: calc(8.5in - 0.5in) !important;
+      height: calc(11in - 0.5in) !important;
       order: 1 !important;
-      margin-bottom: 0 !important;
-      border-width: 2px !important;
+      margin: 0.25in auto !important;
+      border: 3px solid var(--manhattan) !important;
+      border-radius: 12px !important;
+      padding: 0 !important;
+      display: block !important;
+      overflow: hidden !important;
+      page-break-after: always !important;
+      box-sizing: border-box !important;
+    }
+    
+    /* Borough-specific border colors for print */
+    #manhattan .map-card { border-color: var(--manhattan) !important; }
+    #bronx .map-card { border-color: var(--bronx) !important; }
+    #brooklyn .map-card { border-color: var(--brooklyn) !important; }
+    #queens .map-card { border-color: var(--queens) !important; }
+    #staten .map-card { border-color: var(--staten) !important; }
+    
+    /* Show map label as header in print */
+    .map-label {
+      display: flex !important;
+      padding: 0.4rem 0.8rem !important;
+      font-size: 1rem !important;
+      font-family: 'Fredoka One', cursive !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     
     .borough-map {
-      height: 650px !important;
       width: 100% !important;
-    }
-    
-    .map-label {
-      padding: 0.25rem 0.5rem !important;
-      font-size: 0.7rem !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      height: calc(100% - 2rem) !important;
     }
     
     .content-grid > div:last-child {
       order: 2 !important;
       width: 100% !important;
+      padding: 0.25in !important;
+      box-sizing: border-box !important;
     }
     
     .libraries-card {
-      border-width: 2px !important;
+      border-width: 3px !important;
       page-break-before: always !important;
+      border-radius: 12px !important;
     }
     
     .libraries-header {
-      padding: 0.3rem 0.5rem !important;
-      font-size: 0.85rem !important;
+      padding: 0.4rem 0.8rem !important;
+      font-size: 1rem !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+    }
+    
+    .qr-code-section {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    
+    .qr-code-section img {
+      width: 100px;
+      height: 100px;
+    }
+    
+    .qr-code-text {
+      font-size: 0.8rem;
+      color: #555;
+      text-align: left;
+    }
+    
+    .qr-code-text strong {
+      font-size: 0.9rem;
+      color: #333;
     }
     
     .libraries-list {
@@ -353,6 +422,21 @@
     .leaflet-control-zoom, .leaflet-control-attribution {
       display: none !important;
     }
+    
+    /* Make markers much more visible on print */
+    .library-marker div {
+      width: 22px !important;
+      height: 22px !important;
+      border-width: 3px !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Hide popups during print */
+    .leaflet-popup {
+      display: none !important;
+    }
   }
 </style>
 </head>
@@ -382,7 +466,7 @@
   </div>
   <div class="content-grid">
     <div class="map-card" style="border-color:var(--manhattan);">
-      <div class="map-label" style="background:var(--manhattan);">📍 Library locations in Manhattan</div>
+      <div class="map-label" style="background:var(--manhattan);">📍 Manhattan Libraries</div>
       <div id="map-manhattan" class="borough-map"></div>
     </div>
     <div>
@@ -429,6 +513,13 @@
           <div class="library-item"><div class="library-name">Webster Library</div><div class="library-address">1465 York Ave, New York, NY 10075</div></div>
         </div>
       </div>
+      <div class="qr-code-section" data-borough="manhattan">
+        <img src="" alt="QR Code" class="qr-img">
+        <div class="qr-code-text">
+          <strong>📱 View Interactive Map Online</strong><br>
+          Scan to explore Manhattan libraries on your phone!
+        </div>
+      </div>
       <div class="fun-fact" style="background:#fde8e8; border-color:var(--manhattan); color:#7a1a1a;">
         🦁 Did you know? The famous New York Public Library on 5th Avenue has two stone lion statues out front named <strong>Patience</strong> and <strong>Fortitude</strong>! Kids love visiting them.
       </div>
@@ -436,10 +527,10 @@
   </div>
   <div class="print-map">
     <div class="print-map-label">📍 Manhattan Library Locations</div>
-    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.78,-73.97&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:red%7C40.800,-73.958%7C40.805,-73.937%7C40.761,-73.978%7C40.763,-73.968%7C40.766,-73.959%7C40.785,-73.952%7C40.794,-73.944%7C40.740,-73.993%7C40.796,-73.967%7C40.813,-73.939%7C40.714,-73.995%7C40.763,-73.993%7C40.816,-73.940%7C40.867,-73.928%7C40.848,-73.938%7C40.811,-73.956%7C40.823,-73.945%7C40.805,-73.946%7C40.729,-74.006%7C40.868,-73.921%7C40.734,-73.999%7C40.745,-73.979%7C40.752,-73.982%7C40.810,-73.965%7C40.744,-73.994%7C40.713,-74.007%7C40.729,-73.987%7C40.769,-73.986%7C40.814,-73.940%7C40.714,-73.988%7C40.753,-73.982%7C40.727,-73.982%7C40.840,-73.940%7C40.772,-73.953&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Manhattan Libraries Map">
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.78,-73.97&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:red%7C40.800,-73.958%7C40.805,-73.937%7C40.761,-73.978%7C40.763,-73.968%7C40.766,-73.959%7C40.785,-73.952%7C40.794,-73.944%7C40.740,-73.993%7C40.796,-73.967%7C40.813,-73.939%7C40.714,-73.995%7C40.763,-73.993%7C40.816,-73.940%7C40.867,-73.928%7C40.848,-73.938%7C40.811,-73.956%7C40.823,-73.945%7C40.805,-73.946%7C40.729,-74.006%7C40.868,-73.921%7C40.734,-73.999%7C40.745,-73.979%7C40.752,-73.982%7C40.810,-73.965%7C40.744,-73.994%7C40.713,-74.007%7C40.729,-73.987%7C40.769,-73.986%7C40.814,-73.940%7C40.714,-73.988%7C40.753,-73.982%7C40.727,-73.982%7C40.840,-73.940%7C40.772,-73.953&key=" alt="Manhattan Libraries Map">
   </div>
   <div class="print-bar">
-    <button class="print-btn" style="background:var(--manhattan);" onclick="window.print()">🖨️ Print Manhattan Handout</button>
+    <button class="print-btn" style="background:var(--manhattan);" onclick="preparePrint('manhattan')">🖨️ Print Manhattan Handout</button>
   </div>
 </div>
 
@@ -454,7 +545,7 @@
   </div>
   <div class="content-grid">
     <div class="map-card" style="border-color:var(--bronx);">
-      <div class="map-label" style="background:var(--bronx);">📍 Library locations in The Bronx</div>
+      <div class="map-label" style="background:var(--bronx);">📍 Bronx Libraries</div>
       <div id="map-bronx" class="borough-map"></div>
     </div>
     <div>
@@ -492,6 +583,13 @@
           <div class="library-item"><div class="library-name">Wakefield Library</div><div class="library-address">4100 Lowerre Pl, Bronx, NY 10466</div></div>
         </div>
       </div>
+      <div class="qr-code-section" data-borough="bronx">
+        <img src="" alt="QR Code" class="qr-img">
+        <div class="qr-code-text">
+          <strong>📱 View Interactive Map Online</strong><br>
+          Scan to explore Bronx libraries on your phone!
+        </div>
+      </div>
       <div class="fun-fact" style="background:#e3f0fb; border-color:var(--bronx); color:#0c447c;">
         🎵 The Bronx is the birthplace of hip-hop music! The Bronx Library Center has an amazing music and culture collection — perfect for curious readers.
       </div>
@@ -502,7 +600,7 @@
     <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.85,-73.87&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:blue%7C40.866,-73.864%7C40.875,-73.833%7C40.857,-73.888%7C40.862,-73.897%7C40.822,-73.852%7C40.850,-73.788%7C40.820,-73.864%7C40.877,-73.854%7C40.889,-73.851%7C40.861,-73.894%7C40.841,-73.911%7C40.837,-73.927%7C40.820,-73.887%7C40.869,-73.900%7C40.881,-73.903%7C40.823,-73.914%7C40.835,-73.908%7C40.832,-73.915%7C40.871,-73.890%7C40.836,-73.860%7C40.849,-73.838%7C40.894,-73.911%7C40.822,-73.869%7C40.883,-73.919%7C40.848,-73.900%7C40.884,-73.891%7C40.893,-73.855&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Bronx Libraries Map">
   </div>
   <div class="print-bar">
-    <button class="print-btn" style="background:var(--bronx);" onclick="window.print()">🖨️ Print Bronx Handout</button>
+    <button class="print-btn" style="background:var(--bronx);" onclick="preparePrint('bronx')">🖨️ Print Bronx Handout</button>
   </div>
 </div>
 
@@ -517,7 +615,7 @@
   </div>
   <div class="content-grid">
     <div class="map-card" style="border-color:var(--brooklyn);">
-      <div class="map-label" style="background:var(--brooklyn); color:#fff;">📍 Library locations in Brooklyn</div>
+      <div class="map-label" style="background:var(--brooklyn); color:#fff;">📍 Brooklyn Libraries</div>
       <div id="map-brooklyn" class="borough-map"></div>
     </div>
     <div>
@@ -575,6 +673,13 @@
           <div class="library-item"><div class="library-name">Windsor Terrace Library</div><div class="library-address">160 E 5th St, Brooklyn, NY 11218</div></div>
         </div>
       </div>
+      <div class="qr-code-section" data-borough="brooklyn">
+        <img src="" alt="QR Code" class="qr-img">
+        <div class="qr-code-text">
+          <strong>📱 View Interactive Map Online</strong><br>
+          Scan to explore Brooklyn libraries on your phone!
+        </div>
+      </div>
       <div class="fun-fact" style="background:#fff3e0; border-color:var(--brooklyn); color:#7a4a00;">
         🌉 Brooklyn's Grand Army Plaza Library is shaped like a circle — it's one of the most beautiful library buildings in New York! Walk or bike there from Prospect Park.
       </div>
@@ -585,7 +690,7 @@
     <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.65,-73.95&zoom=11&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:orange%7C40.673,-73.968%7C40.634,-74.027%7C40.680,-73.956%7C40.631,-73.993%7C40.577,-73.960%7C40.662,-73.910%7C40.697,-73.930%7C40.638,-73.896%7C40.680,-73.998%7C40.690,-73.965%7C40.576,-73.983%7C40.670,-73.950%7C40.673,-73.879%7C40.620,-74.017%7C40.654,-73.929%7C40.668,-73.936%7C40.651,-73.958%7C40.621,-73.930%7C40.621,-74.030%7C40.592,-73.922%7C40.596,-73.970%7C40.729,-73.952%7C40.604,-73.962%7C40.634,-73.849%7C40.637,-73.979%7C40.601,-73.941%7C40.611,-73.956%7C40.712,-73.949%7C40.679,-73.928%7C40.622,-73.992%7C40.626,-74.000%7C40.605,-73.909%7C40.603,-74.002%7C40.682,-73.978%7C40.669,-73.980%7C40.677,-73.964%7C40.673,-74.010%7C40.659,-73.929%7C40.584,-73.942%7C40.655,-73.873%7C40.663,-73.913%7C40.646,-74.006%7C40.596,-73.996%7C40.696,-73.976%7C40.710,-73.956%7C40.652,-73.978&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Brooklyn Libraries Map">
   </div>
   <div class="print-bar">
-    <button class="print-btn" style="background:var(--brooklyn); color:#fff;" onclick="window.print()">🖨️ Print Brooklyn Handout</button>
+    <button class="print-btn" style="background:var(--brooklyn); color:#fff;" onclick="preparePrint('brooklyn')">🖨️ Print Brooklyn Handout</button>
   </div>
 </div>
 
@@ -600,7 +705,7 @@
   </div>
   <div class="content-grid">
     <div class="map-card" style="border-color:var(--queens);">
-      <div class="map-label" style="background:var(--queens);">📍 Library locations in Queens</div>
+      <div class="map-label" style="background:var(--queens);">📍 Queens Libraries</div>
       <div id="map-queens" class="borough-map"></div>
     </div>
     <div>
@@ -664,6 +769,13 @@
           <div class="library-item"><div class="library-name">Woodside Library</div><div class="library-address">54-22 Skillman Ave, Woodside, NY 11377</div></div>
         </div>
       </div>
+      <div class="qr-code-section" data-borough="queens">
+        <img src="" alt="QR Code" class="qr-img">
+        <div class="qr-code-text">
+          <strong>📱 View Interactive Map Online</strong><br>
+          Scan to explore Queens libraries on your phone!
+        </div>
+      </div>
       <div class="fun-fact" style="background:#e0f7f0; border-color:var(--queens); color:#085041;">
         🌍 Queens is home to people from over 160 countries! The Queens Library has books in more languages than almost any other library in America.
       </div>
@@ -674,7 +786,7 @@
     <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.71,-73.82&zoom=11&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:green%7C40.691,-73.801%7C40.591,-73.791%7C40.773,-73.909%7C40.761,-73.816%7C40.768,-73.774%7C40.723,-73.725%7C40.708,-73.818%7C40.762,-73.917%7C40.694,-73.738%7C40.749,-73.866%7C40.766,-73.748%7C40.761,-73.872%7C40.764,-73.801%7C40.741,-73.879%7C40.603,-73.753%7C40.759,-73.830%7C40.720,-73.843%7C40.735,-73.793%7C40.747,-73.719%7C40.726,-73.806%7C40.711,-73.763%7C40.661,-73.842%7C40.755,-73.884%7C40.726,-73.802%7C40.758,-73.859%7C40.674,-73.745%7C40.747,-73.942%7C40.726,-73.906%7C40.759,-73.839%7C40.716,-73.876%7C40.709,-73.847%7C40.679,-73.846%7C40.578,-73.812%7C40.721,-73.747%7C40.750,-73.823%7C40.761,-73.935%7C40.716,-73.861%7C40.697,-73.831%7C40.712,-73.903%7C40.676,-73.785%7C40.659,-73.734%7C40.703,-73.762%7C40.691,-73.791%7C40.678,-73.810%7C40.668,-73.762%7C40.689,-73.769%7C40.773,-73.906%7C40.745,-73.922%7C40.793,-73.816%7C40.727,-73.746%7C40.690,-73.856%7C40.746,-73.906&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Queens Libraries Map">
   </div>
   <div class="print-bar">
-    <button class="print-btn" style="background:var(--queens);" onclick="window.print()">🖨️ Print Queens Handout</button>
+    <button class="print-btn" style="background:var(--queens);" onclick="preparePrint('queens')">🖨️ Print Queens Handout</button>
   </div>
 </div>
 
@@ -689,7 +801,7 @@
   </div>
   <div class="content-grid">
     <div class="map-card" style="border-color:var(--staten);">
-      <div class="map-label" style="background:var(--staten);">📍 Library locations in Staten Island</div>
+      <div class="map-label" style="background:var(--staten);">📍 Staten Island Libraries</div>
       <div id="map-staten" class="borough-map"></div>
     </div>
     <div>
@@ -711,6 +823,13 @@
           <div class="library-item"><div class="library-name">Todt Hill–Westerleigh Library</div><div class="library-address">2550 Victory Blvd, Staten Island, NY 10314</div></div>
         </div>
       </div>
+      <div class="qr-code-section" data-borough="staten">
+        <img src="" alt="QR Code" class="qr-img">
+        <div class="qr-code-text">
+          <strong>📱 View Interactive Map Online</strong><br>
+          Scan to explore Staten Island libraries on your phone!
+        </div>
+      </div>
       <div class="fun-fact" style="background:#ede8ff; border-color:var(--staten); color:#3c3489;">
         ⛴️ The Staten Island Ferry is totally free to ride, and it passes right by the Statue of Liberty! After your ferry ride, visit your local library for books about New York's famous landmarks.
       </div>
@@ -721,7 +840,7 @@
     <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.58,-74.14&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:purple%7C40.643,-74.076%7C40.588,-74.098%7C40.554,-74.152%7C40.520,-74.187%7C40.637,-74.159%7C40.570,-74.116%7C40.635,-74.136%7C40.567,-74.141%7C40.583,-74.069%7C40.624,-74.078%7C40.608,-74.149&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Staten Island Libraries Map">
   </div>
   <div class="print-bar">
-    <button class="print-btn" style="background:var(--staten);" onclick="window.print()">🖨️ Print Staten Island Handout</button>
+    <button class="print-btn" style="background:var(--staten);" onclick="preparePrint('staten')">🖨️ Print Staten Island Handout</button>
   </div>
 </div>
 
@@ -1035,7 +1154,25 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
+  
+  // Generate QR codes for each borough
+  generateQRCodes();
 });
+
+// Generate QR codes linking to this page with borough hash
+function generateQRCodes() {
+  const baseUrl = window.location.href.split('#')[0];
+  const boroughs = ['manhattan', 'bronx', 'brooklyn', 'queens', 'staten'];
+  
+  boroughs.forEach(borough => {
+    const qrSection = document.querySelector(`.qr-code-section[data-borough="${borough}"]`);
+    if (qrSection) {
+      const qrImg = qrSection.querySelector('.qr-img');
+      const targetUrl = encodeURIComponent(`${baseUrl}#${borough}`);
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${targetUrl}`;
+    }
+  });
+}
 
 // Zoom to a specific library and open its popup
 function zoomToLibrary(borough, libraryName) {
@@ -1081,45 +1218,55 @@ function showBorough(name) {
   }, 100);
 }
 
-// Handle print - ensure map is properly sized
-window.addEventListener('beforeprint', function() {
-  // Get the active borough
-  const activeBoroughEl = document.querySelector('.borough-view.active');
-  if (activeBoroughEl) {
-    const borough = activeBoroughEl.id;
-    if (maps[borough]) {
-      // Force map to resize for print dimensions
-      maps[borough].invalidateSize();
+// Prepare map for printing - fit all libraries, fill the page
+function preparePrint(borough) {
+  // Ensure map is initialized
+  if (!maps[borough]) {
+    initBoroughMap(borough);
+  }
+  
+  const map = maps[borough];
+  const locs = libraryLocations[borough];
+  const mapContainer = document.getElementById('map-' + borough);
+  
+  if (locs && locs.length > 0) {
+    // Temporarily resize container to print dimensions (accounting for padding/border)
+    const mapCard = mapContainer.closest('.map-card');
+    mapCard.style.width = '8in';
+    mapCard.style.height = '10.5in';
+    mapContainer.style.width = '8in';
+    mapContainer.style.height = '10.1in';
+    
+    // Fit all library markers
+    const bounds = L.latLngBounds(locs.map(loc => [loc[0], loc[1]]));
+    map.invalidateSize();
+    map.fitBounds(bounds, { padding: [50, 50], animate: false });
+    
+    // Wait for resize and tiles to load
+    setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(bounds, { padding: [50, 50], animate: false });
       
-      // Calculate bounds from library locations (tighter fit)
-      const locs = libraryLocations[borough];
-      if (locs && locs.length > 0) {
-        const markerBounds = L.latLngBounds(locs.map(loc => [loc[0], loc[1]]));
-        // Zoom to show libraries with padding, minimum zoom 14 for street visibility
-        maps[borough].fitBounds(markerBounds, { 
-          padding: [40, 40],
-          maxZoom: 14  // This ensures streets are visible
-        });
-      }
-    }
-  }
-});
-
-window.addEventListener('afterprint', function() {
-  // Restore map after printing
-  const activeBoroughEl = document.querySelector('.borough-view.active');
-  if (activeBoroughEl) {
-    const borough = activeBoroughEl.id;
-    if (maps[borough]) {
+      // Wait more for tiles, then print
       setTimeout(() => {
-        maps[borough].invalidateSize();
-        // Reset to original borough view
-        const bounds = boroughBoundaries[borough];
-        maps[borough].fitBounds(bounds, { padding: [20, 20] });
-      }, 100);
-    }
+        window.print();
+        
+        // Reset container sizes after print
+        setTimeout(() => {
+          mapCard.style.width = '';
+          mapCard.style.height = '';
+          mapContainer.style.width = '';
+          mapContainer.style.height = '';
+          map.invalidateSize();
+        }, 500);
+      }, 1500);
+    }, 500);
+  } else {
+    window.print();
   }
-});
+}
+
+// Print handlers no longer needed - using static images
 </script>
 </body>
 </html>
