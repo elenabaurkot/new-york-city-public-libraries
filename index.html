@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC Public Libraries — Borough Handouts</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --manhattan: #E84B4B;
+    --bronx: #4A90D9;
+    --brooklyn: #F5A623;
+    --queens: #2EBD8A;
+    --staten: #7B68EE;
+    --bg: #FFF9F0;
+    --card: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 2.5rem 1rem 1.5rem;
+    background: linear-gradient(135deg, #fff5e6 0%, #fff0f0 50%, #f0f8ff 100%);
+    border-bottom: 3px solid #f0e0c0;
+  }
+
+  .hero-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    color: #2c2c2a;
+    letter-spacing: 1px;
+    line-height: 1.1;
+  }
+
+  .hero-subtitle {
+    font-size: 1.05rem;
+    color: #666;
+    margin-top: 0.5rem;
+    font-weight: 600;
+  }
+
+  .borough-tabs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1.2rem 1rem;
+    background: #fff;
+    border-bottom: 2px solid #f0e0c0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .tab-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    padding: 0.55rem 1.2rem;
+    border: 3px solid transparent;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f5f5f5;
+    color: #555;
+    letter-spacing: 0.5px;
+  }
+
+  .tab-btn:hover { transform: translateY(-2px); }
+  .tab-btn.active { color: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+  .tab-btn[data-borough="manhattan"].active { background: var(--manhattan); border-color: var(--manhattan); }
+  .tab-btn[data-borough="bronx"].active { background: var(--bronx); border-color: var(--bronx); }
+  .tab-btn[data-borough="brooklyn"].active { background: var(--brooklyn); border-color: var(--brooklyn); }
+  .tab-btn[data-borough="queens"].active { background: var(--queens); border-color: var(--queens); }
+  .tab-btn[data-borough="staten"].active { background: var(--staten); border-color: var(--staten); }
+
+  .borough-view {
+    display: none;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .borough-view.active { display: block; }
+
+  .borough-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .borough-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+  }
+
+  .borough-name {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1;
+  }
+
+  .borough-tagline {
+    font-size: 0.95rem;
+    color: #777;
+    font-weight: 600;
+    margin-top: 0.2rem;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 700px) {
+    .content-grid { grid-template-columns: 1fr; }
+  }
+
+  .map-card {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 3px solid;
+    background: #fff;
+  }
+
+  .map-card iframe {
+    display: block;
+    width: 100%;
+    height: 420px;
+    border: none;
+  }
+
+  .borough-map {
+    width: 100%;
+    height: 420px;
+    background: #f5f5f5;
+  }
+
+  .map-label {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .libraries-card {
+    background: var(--card);
+    border-radius: 16px;
+    border: 3px solid;
+    overflow: hidden;
+  }
+
+  .libraries-header {
+    padding: 0.75rem 1rem;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .libraries-list {
+    padding: 0.75rem 0;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .library-item {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #f0ebe0;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+
+  .library-item:last-child { border-bottom: none; }
+  .library-item:hover { background: #faf7f2; }
+  .library-item.active { background: #e8f4ff; }
+
+  .library-name {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #2c2c2a;
+  }
+
+  .library-address {
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: 2px;
+  }
+
+  .print-bar {
+    text-align: center;
+    padding: 1rem;
+    border-top: 2px dashed #e0d8c8;
+    margin-top: 1.5rem;
+  }
+
+  .print-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    padding: 0.65rem 2rem;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .print-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+
+  .fun-fact {
+    margin-top: 1rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.5;
+    border-left: 5px solid;
+  }
+
+  .count-badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 50px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #fff;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .print-map {
+    display: none;
+  }
+
+  @media print {
+    .borough-tabs, .hero, .print-bar, .fun-fact, .print-map { display: none !important; }
+    .borough-view { display: none !important; }
+    .borough-view.active { display: block !important; padding: 0.2rem !important; }
+    
+    .borough-header {
+      margin-bottom: 0.2rem !important;
+      padding: 0 !important;
+    }
+    
+    .borough-icon { display: none !important; }
+    
+    .borough-name {
+      font-size: 1.4rem !important;
+      text-align: center;
+      margin-bottom: 0.2rem !important;
+    }
+    
+    .borough-tagline { display: none !important; }
+    
+    .content-grid {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    
+    .map-card {
+      width: 100% !important;
+      order: 1 !important;
+      margin-bottom: 0 !important;
+      border-width: 2px !important;
+    }
+    
+    .borough-map {
+      height: 650px !important;
+      width: 100% !important;
+    }
+    
+    .map-label {
+      padding: 0.25rem 0.5rem !important;
+      font-size: 0.7rem !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .content-grid > div:last-child {
+      order: 2 !important;
+      width: 100% !important;
+    }
+    
+    .libraries-card {
+      border-width: 2px !important;
+      page-break-before: always !important;
+    }
+    
+    .libraries-header {
+      padding: 0.3rem 0.5rem !important;
+      font-size: 0.85rem !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .libraries-list {
+      max-height: none !important;
+      overflow: visible !important;
+      display: flex !important;
+      flex-wrap: wrap !important;
+      padding: 0.25rem !important;
+      gap: 0 !important;
+    }
+    
+    .library-item {
+      width: 33.33% !important;
+      padding: 0.2rem 0.4rem !important;
+      border-bottom: none !important;
+      box-sizing: border-box !important;
+    }
+    
+    .library-name {
+      font-size: 0.65rem !important;
+      font-weight: 700 !important;
+    }
+    
+    .library-address {
+      font-size: 0.55rem !important;
+      margin-top: 0 !important;
+    }
+    
+    /* Force Leaflet tiles to print */
+    .leaflet-tile-container img {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    .leaflet-control-zoom, .leaflet-control-attribution {
+      display: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-title">📚 NYC Public Libraries</div>
+  <div class="hero-subtitle">Find your neighborhood library — pick a borough to explore!</div>
+</div>
+
+<div class="borough-tabs">
+  <button class="tab-btn active" data-borough="manhattan" onclick="showBorough('manhattan')">🗽 Manhattan</button>
+  <button class="tab-btn" data-borough="bronx" onclick="showBorough('bronx')">🌳 The Bronx</button>
+  <button class="tab-btn" data-borough="brooklyn" onclick="showBorough('brooklyn')">🌉 Brooklyn</button>
+  <button class="tab-btn" data-borough="queens" onclick="showBorough('queens')">✈️ Queens</button>
+  <button class="tab-btn" data-borough="staten" onclick="showBorough('staten')">⛴️ Staten Island</button>
+</div>
+
+<!-- MANHATTAN -->
+<div id="manhattan" class="borough-view active">
+  <div class="borough-header">
+    <div class="borough-icon" style="background:#fde8e8;">🗽</div>
+    <div>
+      <div class="borough-name" style="color:var(--manhattan);">Manhattan</div>
+      <div class="borough-tagline">Home to the iconic New York Public Library on 5th Avenue!</div>
+    </div>
+  </div>
+  <div class="content-grid">
+    <div class="map-card" style="border-color:var(--manhattan);">
+      <div class="map-label" style="background:var(--manhattan);">📍 Library locations in Manhattan</div>
+      <div id="map-manhattan" class="borough-map"></div>
+    </div>
+    <div>
+      <div class="libraries-card" style="border-color:var(--manhattan);">
+        <div class="libraries-header" style="background:var(--manhattan);">
+          📚 Manhattan Libraries <span class="count-badge" style="background:rgba(255,255,255,0.3);">36</span>
+        </div>
+        <div class="libraries-list">
+          <div class="library-item"><div class="library-name">115th Street Library</div><div class="library-address">203 W 115th St, New York, NY 10026</div></div>
+          <div class="library-item"><div class="library-name">125th Street Library</div><div class="library-address">224 E 125th St, New York, NY 10035</div></div>
+          <div class="library-item"><div class="library-name">53rd Street Library</div><div class="library-address">18 W 53rd St, New York, NY 10019</div></div>
+          <div class="library-item"><div class="library-name">58th Street Library</div><div class="library-address">127 E 58th St, New York, NY 10022</div></div>
+          <div class="library-item"><div class="library-name">67th Street Library</div><div class="library-address">328 E 67th St, New York, NY 10065</div></div>
+          <div class="library-item"><div class="library-name">96th Street Library</div><div class="library-address">112 E 96th St, New York, NY 10128</div></div>
+          <div class="library-item"><div class="library-name">Aguilar Library</div><div class="library-address">174 E 110th St, New York, NY 10029</div></div>
+          <div class="library-item"><div class="library-name">Andrew Heiskell Braille and Talking Book Library</div><div class="library-address">40 W 20th St, New York, NY 10011</div></div>
+          <div class="library-item"><div class="library-name">Bloomingdale Library</div><div class="library-address">150 W 100th St, New York, NY 10025</div></div>
+          <div class="library-item"><div class="library-name">Cathedral Library</div><div class="library-address">560 Lenox Ave, New York, NY 10037</div></div>
+          <div class="library-item"><div class="library-name">Chatham Square Library</div><div class="library-address">33 E Broadway, New York, NY 10002</div></div>
+          <div class="library-item"><div class="library-name">Columbus Library</div><div class="library-address">742 10th Ave, New York, NY 10019</div></div>
+          <div class="library-item"><div class="library-name">Countee Cullen Library</div><div class="library-address">104 W 136th St, New York, NY 10030</div></div>
+          <div class="library-item"><div class="library-name">Donnell Library Center</div><div class="library-address">20 W 53rd St, New York, NY 10019</div></div>
+          <div class="library-item"><div class="library-name">Dyckman Library</div><div class="library-address">4005 Nagle Ave, New York, NY 10034</div></div>
+          <div class="library-item"><div class="library-name">Fort Washington Library</div><div class="library-address">535 W 179th St, New York, NY 10033</div></div>
+          <div class="library-item"><div class="library-name">George Bruce Library</div><div class="library-address">518 W 125th St, New York, NY 10027</div></div>
+          <div class="library-item"><div class="library-name">Hamilton Grange Library</div><div class="library-address">503 W 145th St, New York, NY 10031</div></div>
+          <div class="library-item"><div class="library-name">Harlem Library</div><div class="library-address">9 W 124th St, New York, NY 10027</div></div>
+          <div class="library-item"><div class="library-name">Hudson Park Library</div><div class="library-address">66 Leroy St, New York, NY 10014</div></div>
+          <div class="library-item"><div class="library-name">Inwood Library</div><div class="library-address">4790 Broadway, New York, NY 10034</div></div>
+          <div class="library-item"><div class="library-name">Jefferson Market Library</div><div class="library-address">425 6th Ave, New York, NY 10011</div></div>
+          <div class="library-item"><div class="library-name">Kips Bay Library</div><div class="library-address">446 3rd Ave, New York, NY 10016</div></div>
+          <div class="library-item"><div class="library-name">Mid-Manhattan Library</div><div class="library-address">455 5th Ave, New York, NY 10016</div></div>
+          <div class="library-item"><div class="library-name">Morningside Heights Library</div><div class="library-address">2900 Broadway, New York, NY 10025</div></div>
+          <div class="library-item"><div class="library-name">Muhlenberg Library</div><div class="library-address">209 W 23rd St, New York, NY 10011</div></div>
+          <div class="library-item"><div class="library-name">New Amsterdam Library</div><div class="library-address">9 Murray St, New York, NY 10007</div></div>
+          <div class="library-item"><div class="library-name">Ottendorfer Library</div><div class="library-address">135 2nd Ave, New York, NY 10003</div></div>
+          <div class="library-item"><div class="library-name">Port Washington Library</div><div class="library-address">245 Main St, New York, NY 10004</div></div>
+          <div class="library-item"><div class="library-name">Riverside Library</div><div class="library-address">127 Amsterdam Ave, New York, NY 10023</div></div>
+          <div class="library-item"><div class="library-name">Schomburg Center for Research in Black Culture</div><div class="library-address">515 Malcolm X Blvd, New York, NY 10037</div></div>
+          <div class="library-item"><div class="library-name">Seward Park Library</div><div class="library-address">192 E Broadway, New York, NY 10002</div></div>
+          <div class="library-item"><div class="library-name">Stephen A. Schwarzman Building</div><div class="library-address">476 5th Ave, New York, NY 10018</div></div>
+          <div class="library-item"><div class="library-name">Tompkins Square Library</div><div class="library-address">331 E 10th St, New York, NY 10009</div></div>
+          <div class="library-item"><div class="library-name">Washington Heights Library</div><div class="library-address">1000 St Nicholas Ave, New York, NY 10032</div></div>
+          <div class="library-item"><div class="library-name">Webster Library</div><div class="library-address">1465 York Ave, New York, NY 10075</div></div>
+        </div>
+      </div>
+      <div class="fun-fact" style="background:#fde8e8; border-color:var(--manhattan); color:#7a1a1a;">
+        🦁 Did you know? The famous New York Public Library on 5th Avenue has two stone lion statues out front named <strong>Patience</strong> and <strong>Fortitude</strong>! Kids love visiting them.
+      </div>
+    </div>
+  </div>
+  <div class="print-map">
+    <div class="print-map-label">📍 Manhattan Library Locations</div>
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.78,-73.97&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:red%7C40.800,-73.958%7C40.805,-73.937%7C40.761,-73.978%7C40.763,-73.968%7C40.766,-73.959%7C40.785,-73.952%7C40.794,-73.944%7C40.740,-73.993%7C40.796,-73.967%7C40.813,-73.939%7C40.714,-73.995%7C40.763,-73.993%7C40.816,-73.940%7C40.867,-73.928%7C40.848,-73.938%7C40.811,-73.956%7C40.823,-73.945%7C40.805,-73.946%7C40.729,-74.006%7C40.868,-73.921%7C40.734,-73.999%7C40.745,-73.979%7C40.752,-73.982%7C40.810,-73.965%7C40.744,-73.994%7C40.713,-74.007%7C40.729,-73.987%7C40.769,-73.986%7C40.814,-73.940%7C40.714,-73.988%7C40.753,-73.982%7C40.727,-73.982%7C40.840,-73.940%7C40.772,-73.953&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Manhattan Libraries Map">
+  </div>
+  <div class="print-bar">
+    <button class="print-btn" style="background:var(--manhattan);" onclick="window.print()">🖨️ Print Manhattan Handout</button>
+  </div>
+</div>
+
+<!-- BRONX -->
+<div id="bronx" class="borough-view">
+  <div class="borough-header">
+    <div class="borough-icon" style="background:#e3f0fb;">🌳</div>
+    <div>
+      <div class="borough-name" style="color:var(--bronx);">The Bronx</div>
+      <div class="borough-tagline">Libraries here serve one of the most diverse communities in America!</div>
+    </div>
+  </div>
+  <div class="content-grid">
+    <div class="map-card" style="border-color:var(--bronx);">
+      <div class="map-label" style="background:var(--bronx);">📍 Library locations in The Bronx</div>
+      <div id="map-bronx" class="borough-map"></div>
+    </div>
+    <div>
+      <div class="libraries-card" style="border-color:var(--bronx);">
+        <div class="libraries-header" style="background:var(--bronx);">
+          📚 Bronx Libraries <span class="count-badge" style="background:rgba(255,255,255,0.3);">27</span>
+        </div>
+        <div class="libraries-list">
+          <div class="library-item"><div class="library-name">Allerton Library</div><div class="library-address">2740 Barnes Ave, Bronx, NY 10467</div></div>
+          <div class="library-item"><div class="library-name">Baychester Library</div><div class="library-address">2049 Asch Loop N, Bronx, NY 10475</div></div>
+          <div class="library-item"><div class="library-name">Belmont Library and Enrico Fermi Cultural Center</div><div class="library-address">610 E 186th St, Bronx, NY 10458</div></div>
+          <div class="library-item"><div class="library-name">Bronx Library Center</div><div class="library-address">310 E Kingsbridge Rd, Bronx, NY 10458</div></div>
+          <div class="library-item"><div class="library-name">Castle Hill Library</div><div class="library-address">947 Castle Hill Ave, Bronx, NY 10473</div></div>
+          <div class="library-item"><div class="library-name">City Island Library</div><div class="library-address">320 City Island Ave, Bronx, NY 10464</div></div>
+          <div class="library-item"><div class="library-name">Clason's Point Library</div><div class="library-address">1215 Morrison Ave, Bronx, NY 10472</div></div>
+          <div class="library-item"><div class="library-name">Eastchester Library</div><div class="library-address">1385 E Gun Hill Rd, Bronx, NY 10469</div></div>
+          <div class="library-item"><div class="library-name">Edenwald Library</div><div class="library-address">1255 E 233rd St, Bronx, NY 10466</div></div>
+          <div class="library-item"><div class="library-name">Fordham Library</div><div class="library-address">2556 Bainbridge Ave, Bronx, NY 10458</div></div>
+          <div class="library-item"><div class="library-name">Grand Concourse Library</div><div class="library-address">155 E 173rd St, Bronx, NY 10457</div></div>
+          <div class="library-item"><div class="library-name">High Bridge Library</div><div class="library-address">78 W 168th St, Bronx, NY 10452</div></div>
+          <div class="library-item"><div class="library-name">Hunts Point Library</div><div class="library-address">877 Southern Blvd, Bronx, NY 10459</div></div>
+          <div class="library-item"><div class="library-name">Jerome Park Library</div><div class="library-address">118 Eames Pl, Bronx, NY 10468</div></div>
+          <div class="library-item"><div class="library-name">Kingsbridge Library</div><div class="library-address">291 W 231st St, Bronx, NY 10463</div></div>
+          <div class="library-item"><div class="library-name">Melrose Library</div><div class="library-address">910 Morris Ave, Bronx, NY 10451</div></div>
+          <div class="library-item"><div class="library-name">Morrisania Library</div><div class="library-address">610 E 169th St, Bronx, NY 10456</div></div>
+          <div class="library-item"><div class="library-name">Mott Haven Library</div><div class="library-address">168 E 168th St, Bronx, NY 10456</div></div>
+          <div class="library-item"><div class="library-name">Mosholu Library</div><div class="library-address">285 E Mosholu Pkwy S, Bronx, NY 10458</div></div>
+          <div class="library-item"><div class="library-name">Parkchester Library</div><div class="library-address">1985 Westchester Ave, Bronx, NY 10462</div></div>
+          <div class="library-item"><div class="library-name">Pelham Bay Library</div><div class="library-address">3060 Middletown Rd, Bronx, NY 10461</div></div>
+          <div class="library-item"><div class="library-name">Riverdale Library</div><div class="library-address">5540 Mosholu Ave, Bronx, NY 10471</div></div>
+          <div class="library-item"><div class="library-name">Sound View Library</div><div class="library-address">660 Soundview Ave, Bronx, NY 10473</div></div>
+          <div class="library-item"><div class="library-name">Spuyten Duyvil Library</div><div class="library-address">650 W 235th St, Bronx, NY 10463</div></div>
+          <div class="library-item"><div class="library-name">Tremont Library</div><div class="library-address">1866 Washington Ave, Bronx, NY 10457</div></div>
+          <div class="library-item"><div class="library-name">Van Cortlandt Library</div><div class="library-address">3882 Cannon Pl, Bronx, NY 10463</div></div>
+          <div class="library-item"><div class="library-name">Wakefield Library</div><div class="library-address">4100 Lowerre Pl, Bronx, NY 10466</div></div>
+        </div>
+      </div>
+      <div class="fun-fact" style="background:#e3f0fb; border-color:var(--bronx); color:#0c447c;">
+        🎵 The Bronx is the birthplace of hip-hop music! The Bronx Library Center has an amazing music and culture collection — perfect for curious readers.
+      </div>
+    </div>
+  </div>
+  <div class="print-map">
+    <div class="print-map-label">📍 Bronx Library Locations</div>
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.85,-73.87&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:blue%7C40.866,-73.864%7C40.875,-73.833%7C40.857,-73.888%7C40.862,-73.897%7C40.822,-73.852%7C40.850,-73.788%7C40.820,-73.864%7C40.877,-73.854%7C40.889,-73.851%7C40.861,-73.894%7C40.841,-73.911%7C40.837,-73.927%7C40.820,-73.887%7C40.869,-73.900%7C40.881,-73.903%7C40.823,-73.914%7C40.835,-73.908%7C40.832,-73.915%7C40.871,-73.890%7C40.836,-73.860%7C40.849,-73.838%7C40.894,-73.911%7C40.822,-73.869%7C40.883,-73.919%7C40.848,-73.900%7C40.884,-73.891%7C40.893,-73.855&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Bronx Libraries Map">
+  </div>
+  <div class="print-bar">
+    <button class="print-btn" style="background:var(--bronx);" onclick="window.print()">🖨️ Print Bronx Handout</button>
+  </div>
+</div>
+
+<!-- BROOKLYN -->
+<div id="brooklyn" class="borough-view">
+  <div class="borough-header">
+    <div class="borough-icon" style="background:#fff3e0;">🌉</div>
+    <div>
+      <div class="borough-name" style="color:var(--brooklyn);">Brooklyn</div>
+      <div class="borough-tagline">Brooklyn Public Library — one of the busiest library systems in the US!</div>
+    </div>
+  </div>
+  <div class="content-grid">
+    <div class="map-card" style="border-color:var(--brooklyn);">
+      <div class="map-label" style="background:var(--brooklyn); color:#fff;">📍 Library locations in Brooklyn</div>
+      <div id="map-brooklyn" class="borough-map"></div>
+    </div>
+    <div>
+      <div class="libraries-card" style="border-color:var(--brooklyn);">
+        <div class="libraries-header" style="background:var(--brooklyn); color:#fff;">
+          📚 Brooklyn Libraries <span class="count-badge" style="background:rgba(255,255,255,0.3); color:#333;">60+</span>
+        </div>
+        <div class="libraries-list">
+          <div class="library-item"><div class="library-name">Brooklyn Central Library</div><div class="library-address">10 Grand Army Plaza, Brooklyn, NY 11238</div></div>
+          <div class="library-item"><div class="library-name">Bay Ridge Library</div><div class="library-address">7223 Ridge Blvd, Brooklyn, NY 11209</div></div>
+          <div class="library-item"><div class="library-name">Bedford Library</div><div class="library-address">496 Franklin Ave, Brooklyn, NY 11238</div></div>
+          <div class="library-item"><div class="library-name">Borough Park Library</div><div class="library-address">1265 43rd St, Brooklyn, NY 11219</div></div>
+          <div class="library-item"><div class="library-name">Brighton Beach Library</div><div class="library-address">16 Brighton 1st Rd, Brooklyn, NY 11235</div></div>
+          <div class="library-item"><div class="library-name">Brownsville Library</div><div class="library-address">61 Glenmore Ave, Brooklyn, NY 11212</div></div>
+          <div class="library-item"><div class="library-name">Bushwick Library</div><div class="library-address">340 Bushwick Ave, Brooklyn, NY 11206</div></div>
+          <div class="library-item"><div class="library-name">Canarsie Library</div><div class="library-address">1580 Rockaway Pkwy, Brooklyn, NY 11236</div></div>
+          <div class="library-item"><div class="library-name">Carroll Gardens Library</div><div class="library-address">396 Clinton St, Brooklyn, NY 11231</div></div>
+          <div class="library-item"><div class="library-name">Clinton Hill Library</div><div class="library-address">380 Washington Ave, Brooklyn, NY 11238</div></div>
+          <div class="library-item"><div class="library-name">Coney Island Library</div><div class="library-address">1901 Mermaid Ave, Brooklyn, NY 11224</div></div>
+          <div class="library-item"><div class="library-name">Crown Heights Library</div><div class="library-address">560 New York Ave, Brooklyn, NY 11225</div></div>
+          <div class="library-item"><div class="library-name">Cypress Hills Library</div><div class="library-address">1197 Sutter Ave, Brooklyn, NY 11208</div></div>
+          <div class="library-item"><div class="library-name">Dyker Library</div><div class="library-address">8202 13th Ave, Brooklyn, NY 11228</div></div>
+          <div class="library-item"><div class="library-name">East Flatbush Library</div><div class="library-address">9612 Church Ave, Brooklyn, NY 11212</div></div>
+          <div class="library-item"><div class="library-name">Eastern Parkway Library</div><div class="library-address">1044 Eastern Pkwy, Brooklyn, NY 11213</div></div>
+          <div class="library-item"><div class="library-name">Flatbush Library</div><div class="library-address">22 Linden Blvd, Brooklyn, NY 11226</div></div>
+          <div class="library-item"><div class="library-name">Flatlands Library</div><div class="library-address">2065 Flatbush Ave, Brooklyn, NY 11234</div></div>
+          <div class="library-item"><div class="library-name">Fort Hamilton Library</div><div class="library-address">9424 4th Ave, Brooklyn, NY 11209</div></div>
+          <div class="library-item"><div class="library-name">Gerritsen Beach Library</div><div class="library-address">2808 Gerritsen Ave, Brooklyn, NY 11229</div></div>
+          <div class="library-item"><div class="library-name">Gravesend Library</div><div class="library-address">303 Ave X, Brooklyn, NY 11223</div></div>
+          <div class="library-item"><div class="library-name">Greenpoint Library</div><div class="library-address">107 Norman Ave, Brooklyn, NY 11222</div></div>
+          <div class="library-item"><div class="library-name">Homecrest Library</div><div class="library-address">2525 Coney Island Ave, Brooklyn, NY 11223</div></div>
+          <div class="library-item"><div class="library-name">Howard Beach Library</div><div class="library-address">92-06 156th Ave, Howard Beach, NY 11414</div></div>
+          <div class="library-item"><div class="library-name">Jamaica Bay Library</div><div class="library-address">9727 Seaview Ave, Brooklyn, NY 11236</div></div>
+          <div class="library-item"><div class="library-name">Kensington Library</div><div class="library-address">4207 18th Ave, Brooklyn, NY 11218</div></div>
+          <div class="library-item"><div class="library-name">Kings Bay Library</div><div class="library-address">3650 Nostrand Ave, Brooklyn, NY 11229</div></div>
+          <div class="library-item"><div class="library-name">Kings Highway Library</div><div class="library-address">2115 Ocean Ave, Brooklyn, NY 11229</div></div>
+          <div class="library-item"><div class="library-name">Leonard Library</div><div class="library-address">81 Devoe St, Brooklyn, NY 11211</div></div>
+          <div class="library-item"><div class="library-name">Macon Library</div><div class="library-address">361 Lewis Ave, Brooklyn, NY 11233</div></div>
+          <div class="library-item"><div class="library-name">Mapleton Library</div><div class="library-address">1702 60th St, Brooklyn, NY 11204</div></div>
+          <div class="library-item"><div class="library-name">McKinley Park Library</div><div class="library-address">6211 15th Ave, Brooklyn, NY 11219</div></div>
+          <div class="library-item"><div class="library-name">Mill Basin Library</div><div class="library-address">2385 Ralph Ave, Brooklyn, NY 11234</div></div>
+          <div class="library-item"><div class="library-name">New Utrecht Library</div><div class="library-address">1743 86th St, Brooklyn, NY 11214</div></div>
+          <div class="library-item"><div class="library-name">Pacific Library</div><div class="library-address">25 Fourth Ave, Brooklyn, NY 11217</div></div>
+          <div class="library-item"><div class="library-name">Park Slope Library</div><div class="library-address">431 6th Ave, Brooklyn, NY 11215</div></div>
+          <div class="library-item"><div class="library-name">Prospect Heights Library</div><div class="library-address">487 Flatbush Ave, Brooklyn, NY 11238</div></div>
+          <div class="library-item"><div class="library-name">Red Hook Library</div><div class="library-address">7 Wolcott St, Brooklyn, NY 11231</div></div>
+          <div class="library-item"><div class="library-name">Rugby Library</div><div class="library-address">1000 Utica Ave, Brooklyn, NY 11203</div></div>
+          <div class="library-item"><div class="library-name">Sheepshead Bay Library</div><div class="library-address">2636 E 14th St, Brooklyn, NY 11235</div></div>
+          <div class="library-item"><div class="library-name">Spring Creek Library</div><div class="library-address">12143 Flatlands Ave, Brooklyn, NY 11207</div></div>
+          <div class="library-item"><div class="library-name">Stone Avenue Library</div><div class="library-address">581 Mother Gaston Blvd, Brooklyn, NY 11212</div></div>
+          <div class="library-item"><div class="library-name">Sunset Park Library</div><div class="library-address">5108 4th Ave, Brooklyn, NY 11220</div></div>
+          <div class="library-item"><div class="library-name">Ulmer Park Library</div><div class="library-address">2602 Bath Ave, Brooklyn, NY 11214</div></div>
+          <div class="library-item"><div class="library-name">Walt Whitman Library</div><div class="library-address">93 St Edwards St, Brooklyn, NY 11205</div></div>
+          <div class="library-item"><div class="library-name">Williamsburg Library</div><div class="library-address">240 Division Ave, Brooklyn, NY 11211</div></div>
+          <div class="library-item"><div class="library-name">Windsor Terrace Library</div><div class="library-address">160 E 5th St, Brooklyn, NY 11218</div></div>
+        </div>
+      </div>
+      <div class="fun-fact" style="background:#fff3e0; border-color:var(--brooklyn); color:#7a4a00;">
+        🌉 Brooklyn's Grand Army Plaza Library is shaped like a circle — it's one of the most beautiful library buildings in New York! Walk or bike there from Prospect Park.
+      </div>
+    </div>
+  </div>
+  <div class="print-map">
+    <div class="print-map-label">📍 Brooklyn Library Locations</div>
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.65,-73.95&zoom=11&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:orange%7C40.673,-73.968%7C40.634,-74.027%7C40.680,-73.956%7C40.631,-73.993%7C40.577,-73.960%7C40.662,-73.910%7C40.697,-73.930%7C40.638,-73.896%7C40.680,-73.998%7C40.690,-73.965%7C40.576,-73.983%7C40.670,-73.950%7C40.673,-73.879%7C40.620,-74.017%7C40.654,-73.929%7C40.668,-73.936%7C40.651,-73.958%7C40.621,-73.930%7C40.621,-74.030%7C40.592,-73.922%7C40.596,-73.970%7C40.729,-73.952%7C40.604,-73.962%7C40.634,-73.849%7C40.637,-73.979%7C40.601,-73.941%7C40.611,-73.956%7C40.712,-73.949%7C40.679,-73.928%7C40.622,-73.992%7C40.626,-74.000%7C40.605,-73.909%7C40.603,-74.002%7C40.682,-73.978%7C40.669,-73.980%7C40.677,-73.964%7C40.673,-74.010%7C40.659,-73.929%7C40.584,-73.942%7C40.655,-73.873%7C40.663,-73.913%7C40.646,-74.006%7C40.596,-73.996%7C40.696,-73.976%7C40.710,-73.956%7C40.652,-73.978&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Brooklyn Libraries Map">
+  </div>
+  <div class="print-bar">
+    <button class="print-btn" style="background:var(--brooklyn); color:#fff;" onclick="window.print()">🖨️ Print Brooklyn Handout</button>
+  </div>
+</div>
+
+<!-- QUEENS -->
+<div id="queens" class="borough-view">
+  <div class="borough-header">
+    <div class="borough-icon" style="background:#e0f7f0;">✈️</div>
+    <div>
+      <div class="borough-name" style="color:var(--queens);">Queens</div>
+      <div class="borough-tagline">Queens Library serves over 160 languages — the most diverse borough on Earth!</div>
+    </div>
+  </div>
+  <div class="content-grid">
+    <div class="map-card" style="border-color:var(--queens);">
+      <div class="map-label" style="background:var(--queens);">📍 Library locations in Queens</div>
+      <div id="map-queens" class="borough-map"></div>
+    </div>
+    <div>
+      <div class="libraries-card" style="border-color:var(--queens);">
+        <div class="libraries-header" style="background:var(--queens);">
+          📚 Queens Libraries <span class="count-badge" style="background:rgba(255,255,255,0.3); color:#333;">65+</span>
+        </div>
+        <div class="libraries-list">
+          <div class="library-item"><div class="library-name">Queens Central Library</div><div class="library-address">89-11 Merrick Blvd, Jamaica, NY 11432</div></div>
+          <div class="library-item"><div class="library-name">Arverne Library</div><div class="library-address">312 Beach 54th St, Arverne, NY 11692</div></div>
+          <div class="library-item"><div class="library-name">Astoria Library</div><div class="library-address">14-01 Astoria Blvd, Astoria, NY 11102</div></div>
+          <div class="library-item"><div class="library-name">Auburndale Library</div><div class="library-address">25-55 Francis Lewis Blvd, Flushing, NY 11358</div></div>
+          <div class="library-item"><div class="library-name">Bayside Library</div><div class="library-address">214-20 Northern Blvd, Bayside, NY 11361</div></div>
+          <div class="library-item"><div class="library-name">Bellerose Library</div><div class="library-address">250-06 Hillside Ave, Bellerose, NY 11426</div></div>
+          <div class="library-item"><div class="library-name">Briarwood Library</div><div class="library-address">85-12 Main St, Briarwood, NY 11435</div></div>
+          <div class="library-item"><div class="library-name">Broadway Library</div><div class="library-address">40-20 Broadway, Astoria, NY 11103</div></div>
+          <div class="library-item"><div class="library-name">Cambria Heights Library</div><div class="library-address">218-13 Linden Blvd, Cambria Heights, NY 11411</div></div>
+          <div class="library-item"><div class="library-name">Corona Library</div><div class="library-address">38-23 104th St, Corona, NY 11368</div></div>
+          <div class="library-item"><div class="library-name">Douglaston/Little Neck Library</div><div class="library-address">249-01 Northern Blvd, Little Neck, NY 11363</div></div>
+          <div class="library-item"><div class="library-name">East Elmhurst Library</div><div class="library-address">95-06 Astoria Blvd, East Elmhurst, NY 11369</div></div>
+          <div class="library-item"><div class="library-name">East Flushing Library</div><div class="library-address">196-36 Northern Blvd, Flushing, NY 11358</div></div>
+          <div class="library-item"><div class="library-name">Elmhurst Library</div><div class="library-address">86-01 Broadway, Elmhurst, NY 11373</div></div>
+          <div class="library-item"><div class="library-name">Far Rockaway Library</div><div class="library-address">1637 Central Ave, Far Rockaway, NY 11691</div></div>
+          <div class="library-item"><div class="library-name">Flushing Library</div><div class="library-address">41-17 Main St, Flushing, NY 11355</div></div>
+          <div class="library-item"><div class="library-name">Forest Hills Library</div><div class="library-address">108-19 71st Ave, Forest Hills, NY 11375</div></div>
+          <div class="library-item"><div class="library-name">Fresh Meadows Library</div><div class="library-address">193-20 Peck Ave, Fresh Meadows, NY 11365</div></div>
+          <div class="library-item"><div class="library-name">Glen Oaks Library</div><div class="library-address">256-04 Union Tpke, Glen Oaks, NY 11004</div></div>
+          <div class="library-item"><div class="library-name">Hillcrest Library</div><div class="library-address">187-05 Union Tpke, Fresh Meadows, NY 11366</div></div>
+          <div class="library-item"><div class="library-name">Hollis Library</div><div class="library-address">202-05 Hillside Ave, Hollis, NY 11423</div></div>
+          <div class="library-item"><div class="library-name">Howard Beach Library</div><div class="library-address">92-06 156th Ave, Howard Beach, NY 11414</div></div>
+          <div class="library-item"><div class="library-name">Jackson Heights Library</div><div class="library-address">35-51 81st St, Jackson Heights, NY 11372</div></div>
+          <div class="library-item"><div class="library-name">Jamaica Library</div><div class="library-address">89-11 Merrick Blvd, Jamaica, NY 11432</div></div>
+          <div class="library-item"><div class="library-name">Kew Gardens Hills Library</div><div class="library-address">72-33 Vleigh Pl, Kew Gardens Hills, NY 11367</div></div>
+          <div class="library-item"><div class="library-name">Langston Hughes Library</div><div class="library-address">100-01 Northern Blvd, Corona, NY 11368</div></div>
+          <div class="library-item"><div class="library-name">Laurelton Library</div><div class="library-address">134-26 225th St, Laurelton, NY 11413</div></div>
+          <div class="library-item"><div class="library-name">Long Island City Library</div><div class="library-address">37-44 21st St, Long Island City, NY 11101</div></div>
+          <div class="library-item"><div class="library-name">Maspeth Library</div><div class="library-address">69-70 Grand Ave, Maspeth, NY 11378</div></div>
+          <div class="library-item"><div class="library-name">McGoldrick Library</div><div class="library-address">155-06 Roosevelt Ave, Flushing, NY 11354</div></div>
+          <div class="library-item"><div class="library-name">Middle Village Library</div><div class="library-address">72-31 Metropolitan Ave, Middle Village, NY 11379</div></div>
+          <div class="library-item"><div class="library-name">North Forest Park Library</div><div class="library-address">98-27 Metropolitan Ave, Forest Hills, NY 11375</div></div>
+          <div class="library-item"><div class="library-name">Ozone Park Library</div><div class="library-address">92-24 Rockaway Blvd, Ozone Park, NY 11417</div></div>
+          <div class="library-item"><div class="library-name">Peninsula Library</div><div class="library-address">92-25 Rockaway Beach Blvd, Rockaway Beach, NY 11693</div></div>
+          <div class="library-item"><div class="library-name">Queens Village Library</div><div class="library-address">94-11 217th St, Queens Village, NY 11428</div></div>
+          <div class="library-item"><div class="library-name">Queensboro Hill Library</div><div class="library-address">60-05 Main St, Flushing, NY 11355</div></div>
+          <div class="library-item"><div class="library-name">Ravenswood Library</div><div class="library-address">35-32 21st St, Long Island City, NY 11106</div></div>
+          <div class="library-item"><div class="library-name">Rego Park Library</div><div class="library-address">91-41 63rd Dr, Rego Park, NY 11374</div></div>
+          <div class="library-item"><div class="library-name">Richmond Hill Library</div><div class="library-address">118-14 Hillside Ave, Richmond Hill, NY 11418</div></div>
+          <div class="library-item"><div class="library-name">Ridgewood Library</div><div class="library-address">20-12 Madison St, Ridgewood, NY 11385</div></div>
+          <div class="library-item"><div class="library-name">Rochdale Village Library</div><div class="library-address">169-09 137th Ave, Jamaica, NY 11434</div></div>
+          <div class="library-item"><div class="library-name">Rosedale Library</div><div class="library-address">144-20 243rd St, Rosedale, NY 11422</div></div>
+          <div class="library-item"><div class="library-name">South Hollis Library</div><div class="library-address">204-01 Hollis Ave, Hollis, NY 11423</div></div>
+          <div class="library-item"><div class="library-name">South Jamaica Library</div><div class="library-address">108-41 Guy Brewer Blvd, Jamaica, NY 11433</div></div>
+          <div class="library-item"><div class="library-name">South Ozone Park Library</div><div class="library-address">128-16 Rockaway Blvd, South Ozone Park, NY 11420</div></div>
+          <div class="library-item"><div class="library-name">Springfield Gardens Library</div><div class="library-address">184-20 Springfield Blvd, Springfield Gardens, NY 11413</div></div>
+          <div class="library-item"><div class="library-name">St. Albans Library</div><div class="library-address">191-05 Linden Blvd, St. Albans, NY 11412</div></div>
+          <div class="library-item"><div class="library-name">Steinway Library</div><div class="library-address">21-45 31st St, Astoria, NY 11105</div></div>
+          <div class="library-item"><div class="library-name">Sunnyside Library</div><div class="library-address">43-06 Greenpoint Ave, Sunnyside, NY 11104</div></div>
+          <div class="library-item"><div class="library-name">Whitestone Library</div><div class="library-address">151-10 14th Rd, Whitestone, NY 11357</div></div>
+          <div class="library-item"><div class="library-name">Windsor Park Library</div><div class="library-address">79-50 Bell Blvd, Queens Village, NY 11364</div></div>
+          <div class="library-item"><div class="library-name">Woodhaven Library</div><div class="library-address">85-41 Forest Pkwy, Woodhaven, NY 11421</div></div>
+          <div class="library-item"><div class="library-name">Woodside Library</div><div class="library-address">54-22 Skillman Ave, Woodside, NY 11377</div></div>
+        </div>
+      </div>
+      <div class="fun-fact" style="background:#e0f7f0; border-color:var(--queens); color:#085041;">
+        🌍 Queens is home to people from over 160 countries! The Queens Library has books in more languages than almost any other library in America.
+      </div>
+    </div>
+  </div>
+  <div class="print-map">
+    <div class="print-map-label">📍 Queens Library Locations</div>
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.71,-73.82&zoom=11&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:green%7C40.691,-73.801%7C40.591,-73.791%7C40.773,-73.909%7C40.761,-73.816%7C40.768,-73.774%7C40.723,-73.725%7C40.708,-73.818%7C40.762,-73.917%7C40.694,-73.738%7C40.749,-73.866%7C40.766,-73.748%7C40.761,-73.872%7C40.764,-73.801%7C40.741,-73.879%7C40.603,-73.753%7C40.759,-73.830%7C40.720,-73.843%7C40.735,-73.793%7C40.747,-73.719%7C40.726,-73.806%7C40.711,-73.763%7C40.661,-73.842%7C40.755,-73.884%7C40.726,-73.802%7C40.758,-73.859%7C40.674,-73.745%7C40.747,-73.942%7C40.726,-73.906%7C40.759,-73.839%7C40.716,-73.876%7C40.709,-73.847%7C40.679,-73.846%7C40.578,-73.812%7C40.721,-73.747%7C40.750,-73.823%7C40.761,-73.935%7C40.716,-73.861%7C40.697,-73.831%7C40.712,-73.903%7C40.676,-73.785%7C40.659,-73.734%7C40.703,-73.762%7C40.691,-73.791%7C40.678,-73.810%7C40.668,-73.762%7C40.689,-73.769%7C40.773,-73.906%7C40.745,-73.922%7C40.793,-73.816%7C40.727,-73.746%7C40.690,-73.856%7C40.746,-73.906&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Queens Libraries Map">
+  </div>
+  <div class="print-bar">
+    <button class="print-btn" style="background:var(--queens);" onclick="window.print()">🖨️ Print Queens Handout</button>
+  </div>
+</div>
+
+<!-- STATEN ISLAND -->
+<div id="staten" class="borough-view">
+  <div class="borough-header">
+    <div class="borough-icon" style="background:#ede8ff;">⛴️</div>
+    <div>
+      <div class="borough-name" style="color:var(--staten);">Staten Island</div>
+      <div class="borough-tagline">You can ride the free Staten Island Ferry and spot the Statue of Liberty!</div>
+    </div>
+  </div>
+  <div class="content-grid">
+    <div class="map-card" style="border-color:var(--staten);">
+      <div class="map-label" style="background:var(--staten);">📍 Library locations in Staten Island</div>
+      <div id="map-staten" class="borough-map"></div>
+    </div>
+    <div>
+      <div class="libraries-card" style="border-color:var(--staten);">
+        <div class="libraries-header" style="background:var(--staten);">
+          📚 Staten Island Libraries <span class="count-badge" style="background:rgba(255,255,255,0.3);">11</span>
+        </div>
+        <div class="libraries-list">
+          <div class="library-item"><div class="library-name">St. George Library Center</div><div class="library-address">5 Central Ave, Staten Island, NY 10301</div></div>
+          <div class="library-item"><div class="library-name">Dongan Hills Library</div><div class="library-address">1617 Richmond Rd, Staten Island, NY 10304</div></div>
+          <div class="library-item"><div class="library-name">Great Kills Library</div><div class="library-address">56 Giffords Ln, Staten Island, NY 10308</div></div>
+          <div class="library-item"><div class="library-name">Huguenot Park Library</div><div class="library-address">830 Huguenot Ave, Staten Island, NY 10312</div></div>
+          <div class="library-item"><div class="library-name">Mariners Harbor Library</div><div class="library-address">206 S Gannon Ave, Staten Island, NY 10314</div></div>
+          <div class="library-item"><div class="library-name">New Dorp Library</div><div class="library-address">309 New Dorp Ln, Staten Island, NY 10306</div></div>
+          <div class="library-item"><div class="library-name">Port Richmond Library</div><div class="library-address">75 Bennett St, Staten Island, NY 10302</div></div>
+          <div class="library-item"><div class="library-name">Richmondtown Library</div><div class="library-address">239 Clarke Ave, Staten Island, NY 10306</div></div>
+          <div class="library-item"><div class="library-name">South Beach Library</div><div class="library-address">21-25 Robin Rd, Staten Island, NY 10305</div></div>
+          <div class="library-item"><div class="library-name">Stapleton Library</div><div class="library-address">132 Canal St, Staten Island, NY 10304</div></div>
+          <div class="library-item"><div class="library-name">Todt Hill–Westerleigh Library</div><div class="library-address">2550 Victory Blvd, Staten Island, NY 10314</div></div>
+        </div>
+      </div>
+      <div class="fun-fact" style="background:#ede8ff; border-color:var(--staten); color:#3c3489;">
+        ⛴️ The Staten Island Ferry is totally free to ride, and it passes right by the Statue of Liberty! After your ferry ride, visit your local library for books about New York's famous landmarks.
+      </div>
+    </div>
+  </div>
+  <div class="print-map">
+    <div class="print-map-label">📍 Staten Island Library Locations</div>
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=40.58,-74.14&zoom=12&size=800x600&scale=2&maptype=roadmap&markers=size:small%7Ccolor:purple%7C40.643,-74.076%7C40.588,-74.098%7C40.554,-74.152%7C40.520,-74.187%7C40.637,-74.159%7C40.570,-74.116%7C40.635,-74.136%7C40.567,-74.141%7C40.583,-74.069%7C40.624,-74.078%7C40.608,-74.149&key=AIzaSyBIk7hnx-C3MOSmd_kg5pIDx0TQhoZN6i0" alt="Staten Island Libraries Map">
+  </div>
+  <div class="print-bar">
+    <button class="print-btn" style="background:var(--staten);" onclick="window.print()">🖨️ Print Staten Island Handout</button>
+  </div>
+</div>
+
+<script>
+// Borough boundary coordinates (simplified polygons)
+const boroughBoundaries = {
+  manhattan: [
+    [40.879, -73.927], [40.873, -73.910], [40.834, -73.934], [40.794, -73.929],
+    [40.781, -73.943], [40.764, -73.972], [40.751, -73.972], [40.739, -73.972],
+    [40.712, -73.976], [40.700, -73.997], [40.702, -74.019], [40.710, -74.014],
+    [40.729, -74.010], [40.742, -74.009], [40.760, -74.000], [40.778, -73.982],
+    [40.800, -73.958], [40.828, -73.943], [40.851, -73.934], [40.879, -73.927]
+  ],
+  bronx: [
+    [40.917, -73.909], [40.912, -73.832], [40.894, -73.826], [40.878, -73.832],
+    [40.857, -73.825], [40.830, -73.855], [40.817, -73.892], [40.805, -73.911],
+    [40.796, -73.926], [40.817, -73.933], [40.834, -73.934], [40.853, -73.934],
+    [40.879, -73.927], [40.890, -73.912], [40.917, -73.909]
+  ],
+  brooklyn: [
+    [40.739, -73.972], [40.714, -73.957], [40.695, -73.929], [40.675, -73.902],
+    [40.644, -73.881], [40.620, -73.890], [40.573, -73.889], [40.576, -73.958],
+    [40.582, -74.000], [40.612, -74.042], [40.645, -74.038], [40.668, -74.018],
+    [40.689, -74.003], [40.700, -73.997], [40.712, -73.976], [40.739, -73.972]
+  ],
+  queens: [
+    [40.800, -73.903], [40.787, -73.843], [40.770, -73.794], [40.755, -73.746],
+    [40.722, -73.714], [40.680, -73.738], [40.645, -73.763], [40.604, -73.750],
+    [40.588, -73.785], [40.597, -73.843], [40.644, -73.881], [40.675, -73.902],
+    [40.695, -73.929], [40.714, -73.957], [40.739, -73.972], [40.764, -73.926],
+    [40.780, -73.904], [40.800, -73.903]
+  ],
+  staten: [
+    [40.650, -74.055], [40.640, -74.034], [40.612, -74.042], [40.582, -74.050],
+    [40.556, -74.070], [40.502, -74.192], [40.498, -74.254], [40.517, -74.253],
+    [40.567, -74.198], [40.582, -74.146], [40.596, -74.129], [40.625, -74.098],
+    [40.640, -74.076], [40.650, -74.055]
+  ]
+};
+
+// Library locations for each borough
+const libraryLocations = {
+  manhattan: [
+    [40.800, -73.958, "115th Street Library"],
+    [40.805, -73.937, "125th Street Library"],
+    [40.761, -73.978, "53rd Street Library"],
+    [40.763, -73.968, "58th Street Library"],
+    [40.766, -73.959, "67th Street Library"],
+    [40.785, -73.952, "96th Street Library"],
+    [40.794, -73.944, "Aguilar Library"],
+    [40.740, -73.993, "Andrew Heiskell Library"],
+    [40.796, -73.967, "Bloomingdale Library"],
+    [40.813, -73.939, "Cathedral Library"],
+    [40.714, -73.995, "Chatham Square Library"],
+    [40.763, -73.993, "Columbus Library"],
+    [40.816, -73.940, "Countee Cullen Library"],
+    [40.867, -73.928, "Dyckman Library"],
+    [40.848, -73.938, "Fort Washington Library"],
+    [40.811, -73.956, "George Bruce Library"],
+    [40.823, -73.945, "Hamilton Grange Library"],
+    [40.805, -73.946, "Harlem Library"],
+    [40.729, -74.006, "Hudson Park Library"],
+    [40.868, -73.921, "Inwood Library"],
+    [40.734, -73.999, "Jefferson Market Library"],
+    [40.745, -73.979, "Kips Bay Library"],
+    [40.752, -73.982, "Mid-Manhattan Library"],
+    [40.810, -73.965, "Morningside Heights Library"],
+    [40.744, -73.994, "Muhlenberg Library"],
+    [40.713, -74.007, "New Amsterdam Library"],
+    [40.729, -73.987, "Ottendorfer Library"],
+    [40.769, -73.986, "Riverside Library"],
+    [40.814, -73.940, "Schomburg Center"],
+    [40.714, -73.988, "Seward Park Library"],
+    [40.753, -73.982, "Schwarzman Building"],
+    [40.727, -73.982, "Tompkins Square Library"],
+    [40.840, -73.940, "Washington Heights Library"],
+    [40.772, -73.953, "Webster Library"]
+  ],
+  bronx: [
+    [40.866, -73.864, "Allerton Library"],
+    [40.875, -73.833, "Baychester Library"],
+    [40.857, -73.888, "Belmont Library"],
+    [40.862, -73.897, "Bronx Library Center"],
+    [40.822, -73.852, "Castle Hill Library"],
+    [40.850, -73.788, "City Island Library"],
+    [40.820, -73.864, "Clason's Point Library"],
+    [40.877, -73.854, "Eastchester Library"],
+    [40.889, -73.851, "Edenwald Library"],
+    [40.861, -73.894, "Fordham Library"],
+    [40.841, -73.911, "Grand Concourse Library"],
+    [40.837, -73.927, "High Bridge Library"],
+    [40.820, -73.887, "Hunts Point Library"],
+    [40.869, -73.900, "Jerome Park Library"],
+    [40.881, -73.903, "Kingsbridge Library"],
+    [40.823, -73.914, "Melrose Library"],
+    [40.835, -73.908, "Morrisania Library"],
+    [40.832, -73.915, "Mott Haven Library"],
+    [40.871, -73.890, "Mosholu Library"],
+    [40.836, -73.860, "Parkchester Library"],
+    [40.849, -73.838, "Pelham Bay Library"],
+    [40.894, -73.911, "Riverdale Library"],
+    [40.822, -73.869, "Sound View Library"],
+    [40.883, -73.919, "Spuyten Duyvil Library"],
+    [40.848, -73.900, "Tremont Library"],
+    [40.884, -73.891, "Van Cortlandt Library"],
+    [40.893, -73.855, "Wakefield Library"]
+  ],
+  brooklyn: [
+    [40.673, -73.968, "Brooklyn Central Library"],
+    [40.634, -74.027, "Bay Ridge Library"],
+    [40.680, -73.956, "Bedford Library"],
+    [40.631, -73.993, "Borough Park Library"],
+    [40.577, -73.960, "Brighton Beach Library"],
+    [40.662, -73.910, "Brownsville Library"],
+    [40.697, -73.930, "Bushwick Library"],
+    [40.638, -73.896, "Canarsie Library"],
+    [40.680, -73.998, "Carroll Gardens Library"],
+    [40.690, -73.965, "Clinton Hill Library"],
+    [40.576, -73.983, "Coney Island Library"],
+    [40.670, -73.950, "Crown Heights Library"],
+    [40.673, -73.879, "Cypress Hills Library"],
+    [40.620, -74.017, "Dyker Library"],
+    [40.654, -73.929, "East Flatbush Library"],
+    [40.668, -73.936, "Eastern Parkway Library"],
+    [40.651, -73.958, "Flatbush Library"],
+    [40.621, -73.930, "Flatlands Library"],
+    [40.621, -74.030, "Fort Hamilton Library"],
+    [40.592, -73.922, "Gerritsen Beach Library"],
+    [40.596, -73.970, "Gravesend Library"],
+    [40.729, -73.952, "Greenpoint Library"],
+    [40.604, -73.962, "Homecrest Library"],
+    [40.634, -73.849, "Jamaica Bay Library"],
+    [40.637, -73.979, "Kensington Library"],
+    [40.601, -73.941, "Kings Bay Library"],
+    [40.611, -73.956, "Kings Highway Library"],
+    [40.712, -73.949, "Leonard Library"],
+    [40.679, -73.928, "Macon Library"],
+    [40.622, -73.992, "Mapleton Library"],
+    [40.626, -74.000, "McKinley Park Library"],
+    [40.605, -73.909, "Mill Basin Library"],
+    [40.603, -74.002, "New Utrecht Library"],
+    [40.682, -73.978, "Pacific Library"],
+    [40.669, -73.980, "Park Slope Library"],
+    [40.677, -73.964, "Prospect Heights Library"],
+    [40.673, -74.010, "Red Hook Library"],
+    [40.659, -73.929, "Rugby Library"],
+    [40.584, -73.942, "Sheepshead Bay Library"],
+    [40.655, -73.873, "Spring Creek Library"],
+    [40.663, -73.913, "Stone Avenue Library"],
+    [40.646, -74.006, "Sunset Park Library"],
+    [40.596, -73.996, "Ulmer Park Library"],
+    [40.696, -73.976, "Walt Whitman Library"],
+    [40.710, -73.956, "Williamsburg Library"],
+    [40.652, -73.978, "Windsor Terrace Library"]
+  ],
+  queens: [
+    [40.691, -73.801, "Queens Central Library"],
+    [40.591, -73.791, "Arverne Library"],
+    [40.773, -73.909, "Astoria Library"],
+    [40.761, -73.816, "Auburndale Library"],
+    [40.768, -73.774, "Bayside Library"],
+    [40.723, -73.725, "Bellerose Library"],
+    [40.708, -73.818, "Briarwood Library"],
+    [40.762, -73.917, "Broadway Library"],
+    [40.694, -73.738, "Cambria Heights Library"],
+    [40.749, -73.866, "Corona Library"],
+    [40.766, -73.748, "Douglaston Library"],
+    [40.761, -73.872, "East Elmhurst Library"],
+    [40.764, -73.801, "East Flushing Library"],
+    [40.741, -73.879, "Elmhurst Library"],
+    [40.603, -73.753, "Far Rockaway Library"],
+    [40.759, -73.830, "Flushing Library"],
+    [40.720, -73.843, "Forest Hills Library"],
+    [40.735, -73.793, "Fresh Meadows Library"],
+    [40.747, -73.719, "Glen Oaks Library"],
+    [40.726, -73.806, "Hillcrest Library"],
+    [40.711, -73.763, "Hollis Library"],
+    [40.661, -73.842, "Howard Beach Library"],
+    [40.755, -73.884, "Jackson Heights Library"],
+    [40.726, -73.802, "Kew Gardens Hills Library"],
+    [40.758, -73.859, "Langston Hughes Library"],
+    [40.674, -73.745, "Laurelton Library"],
+    [40.747, -73.942, "Long Island City Library"],
+    [40.726, -73.906, "Maspeth Library"],
+    [40.759, -73.839, "McGoldrick Library"],
+    [40.716, -73.876, "Middle Village Library"],
+    [40.709, -73.847, "North Forest Park Library"],
+    [40.679, -73.846, "Ozone Park Library"],
+    [40.578, -73.812, "Peninsula Library"],
+    [40.721, -73.747, "Queens Village Library"],
+    [40.750, -73.823, "Queensboro Hill Library"],
+    [40.761, -73.935, "Ravenswood Library"],
+    [40.716, -73.861, "Rego Park Library"],
+    [40.697, -73.831, "Richmond Hill Library"],
+    [40.712, -73.903, "Ridgewood Library"],
+    [40.676, -73.785, "Rochdale Village Library"],
+    [40.659, -73.734, "Rosedale Library"],
+    [40.703, -73.762, "South Hollis Library"],
+    [40.691, -73.791, "South Jamaica Library"],
+    [40.678, -73.810, "South Ozone Park Library"],
+    [40.668, -73.762, "Springfield Gardens Library"],
+    [40.689, -73.769, "St. Albans Library"],
+    [40.773, -73.906, "Steinway Library"],
+    [40.745, -73.922, "Sunnyside Library"],
+    [40.793, -73.816, "Whitestone Library"],
+    [40.727, -73.746, "Windsor Park Library"],
+    [40.690, -73.856, "Woodhaven Library"],
+    [40.746, -73.906, "Woodside Library"]
+  ],
+  staten: [
+    [40.643, -74.076, "St. George Library Center"],
+    [40.588, -74.098, "Dongan Hills Library"],
+    [40.554, -74.152, "Great Kills Library"],
+    [40.520, -74.187, "Huguenot Park Library"],
+    [40.637, -74.159, "Mariners Harbor Library"],
+    [40.570, -74.116, "New Dorp Library"],
+    [40.635, -74.136, "Port Richmond Library"],
+    [40.567, -74.141, "Richmondtown Library"],
+    [40.583, -74.069, "South Beach Library"],
+    [40.624, -74.078, "Stapleton Library"],
+    [40.608, -74.149, "Todt Hill Library"]
+  ]
+};
+
+// Borough colors
+const colors = {
+  manhattan: '#E84B4B',
+  bronx: '#4A90D9',
+  brooklyn: '#F5A623',
+  queens: '#2EBD8A',
+  staten: '#7B68EE'
+};
+
+// Store map instances
+const maps = {};
+// Store markers by borough and library name
+const markers = {};
+
+// Initialize a borough map
+function initBoroughMap(borough) {
+  const mapId = 'map-' + borough;
+  const container = document.getElementById(mapId);
+  if (!container || maps[borough]) return;
+
+  // Calculate center from boundary
+  const bounds = boroughBoundaries[borough];
+  const latSum = bounds.reduce((s, c) => s + c[0], 0);
+  const lngSum = bounds.reduce((s, c) => s + c[1], 0);
+  const center = [latSum / bounds.length, lngSum / bounds.length];
+
+  // Create map
+  const map = L.map(mapId, {
+    scrollWheelZoom: true,
+    zoomControl: true
+  }).setView(center, borough === 'staten' ? 12 : 12);
+
+  // Add OpenStreetMap tile layer (better street labels)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Add borough boundary polygon (lighter for print)
+  L.polygon(bounds, {
+    color: colors[borough],
+    weight: 2,
+    fillColor: colors[borough],
+    fillOpacity: 0.1
+  }).addTo(map);
+
+  // Create custom marker icon (larger for visibility)
+  const markerIcon = L.divIcon({
+    className: 'library-marker',
+    html: `<div style="background:${colors[borough]}; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+
+  // Initialize markers storage for this borough
+  markers[borough] = {};
+
+  // Add library markers
+  libraryLocations[borough].forEach(loc => {
+    const marker = L.marker([loc[0], loc[1]], { icon: markerIcon })
+      .bindPopup(`<strong>${loc[2]}</strong>`)
+      .addTo(map);
+    markers[borough][loc[2]] = marker;
+  });
+
+  // Fit bounds to borough
+  map.fitBounds(bounds, { padding: [20, 20] });
+
+  maps[borough] = map;
+}
+
+// Initialize Manhattan map on page load
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => initBoroughMap('manhattan'), 100);
+  
+  // Add click handlers to all library items
+  document.querySelectorAll('.library-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const libraryName = this.querySelector('.library-name').textContent;
+      const boroughView = this.closest('.borough-view');
+      const borough = boroughView ? boroughView.id : null;
+      if (borough) {
+        zoomToLibrary(borough, libraryName);
+        // Highlight clicked item
+        boroughView.querySelectorAll('.library-item').forEach(li => li.classList.remove('active'));
+        this.classList.add('active');
+      }
+    });
+  });
+});
+
+// Zoom to a specific library and open its popup
+function zoomToLibrary(borough, libraryName) {
+  if (!maps[borough]) {
+    initBoroughMap(borough);
+  }
+  
+  // Try exact match first, then partial match
+  let marker = markers[borough] && markers[borough][libraryName];
+  
+  // If no exact match, try to find a partial match
+  if (!marker && markers[borough]) {
+    const searchName = libraryName.toLowerCase();
+    for (const [name, m] of Object.entries(markers[borough])) {
+      if (searchName.includes(name.toLowerCase()) || name.toLowerCase().includes(searchName.split(' ')[0].toLowerCase())) {
+        marker = m;
+        break;
+      }
+    }
+  }
+  
+  if (marker) {
+    const map = maps[borough];
+    map.closePopup();
+    map.flyTo(marker.getLatLng(), 15, { duration: 0.5 });
+    setTimeout(() => marker.openPopup(), 500);
+  }
+}
+
+function showBorough(name) {
+  document.querySelectorAll('.borough-view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.querySelector('[data-borough="' + name + '"]').classList.add('active');
+  
+  // Initialize map if not already done, and invalidate size
+  setTimeout(() => {
+    if (!maps[name]) {
+      initBoroughMap(name);
+    } else {
+      maps[name].invalidateSize();
+    }
+  }, 100);
+}
+
+// Handle print - ensure map is properly sized
+window.addEventListener('beforeprint', function() {
+  // Get the active borough
+  const activeBoroughEl = document.querySelector('.borough-view.active');
+  if (activeBoroughEl) {
+    const borough = activeBoroughEl.id;
+    if (maps[borough]) {
+      // Force map to resize for print dimensions
+      maps[borough].invalidateSize();
+      
+      // Calculate bounds from library locations (tighter fit)
+      const locs = libraryLocations[borough];
+      if (locs && locs.length > 0) {
+        const markerBounds = L.latLngBounds(locs.map(loc => [loc[0], loc[1]]));
+        // Zoom to show libraries with padding, minimum zoom 14 for street visibility
+        maps[borough].fitBounds(markerBounds, { 
+          padding: [40, 40],
+          maxZoom: 14  // This ensures streets are visible
+        });
+      }
+    }
+  }
+});
+
+window.addEventListener('afterprint', function() {
+  // Restore map after printing
+  const activeBoroughEl = document.querySelector('.borough-view.active');
+  if (activeBoroughEl) {
+    const borough = activeBoroughEl.id;
+    if (maps[borough]) {
+      setTimeout(() => {
+        maps[borough].invalidateSize();
+        // Reset to original borough view
+        const bounds = boroughBoundaries[borough];
+        maps[borough].fitBounds(bounds, { padding: [20, 20] });
+      }, 100);
+    }
+  }
+});
+</script>
+</body>
+</html>
