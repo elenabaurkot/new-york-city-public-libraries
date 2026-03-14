@@ -1186,13 +1186,20 @@ function showBorough(name) {
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(name).classList.add('active');
   document.querySelector('[data-borough="' + name + '"]').classList.add('active');
-  
-  // Initialize map if not already done, and invalidate size
+
+  // Initialize map if not already done, and reset view
   setTimeout(() => {
     if (!maps[name]) {
       initBoroughMap(name);
     } else {
-      maps[name].invalidateSize();
+      const map = maps[name];
+      map.invalidateSize();
+      // Reset to fit all libraries in the borough
+      const locs = libraryLocations[name];
+      if (locs && locs.length > 0) {
+        const bounds = L.latLngBounds(locs.map(loc => [loc[0], loc[1]]));
+        map.fitBounds(bounds, { padding: [20, 20], animate: false });
+      }
     }
   }, 100);
 }
